@@ -17,6 +17,7 @@ export default function AdminPage() {
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
+<<<<<<< HEAD
   const statEntries =
     stats && typeof stats === 'object' && !Array.isArray(stats)
       ? Object.entries(stats)
@@ -28,10 +29,18 @@ export default function AdminPage() {
         <p className="page-header__eyebrow">Administración</p>
         <h1>Panel de administración</h1>
         <p>Estadísticas del ecosistema (requiere ROLE_ADMIN).</p>
+=======
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1>Panel de Administracion</h1>
+        <p>Estadisticas del sistema (requiere ROLE_ADMIN)</p>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
+<<<<<<< HEAD
       {statEntries && statEntries.length > 0 ? (
         <div className="card">
           <div className="card-header"><h3>Usuarios por rol</h3></div>
@@ -49,12 +58,21 @@ export default function AdminPage() {
       ) : stats != null ? (
         <div className="card">
           <div className="card-header"><h3>Respuesta</h3></div>
+=======
+      {stats ? (
+        <div className="card">
+          <div className="card-header"><h3>Usuarios por Rol</h3></div>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
           <div className="card-body">
             <pre className="json-display">{JSON.stringify(stats, null, 2)}</pre>
           </div>
         </div>
       ) : (
+<<<<<<< HEAD
         !error && <p className="text-muted">Cargando estadísticas…</p>
+=======
+        !error && <p>Cargando estadisticas...</p>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
       )}
     </div>
   );

@@ -31,6 +31,7 @@ export default function LoginPage() {
   };
 
   return (
+<<<<<<< HEAD
     <div className="login-root">
       <div className="login-hero">
         <div className="login-hero__inner">
@@ -94,6 +95,42 @@ export default function LoginPage() {
           <div className="login-card__footer">
             <p>Uso interno · JWT access + refresh según política del auth service</p>
           </div>
+=======
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <h1>PaqueTrack</h1>
+          <p>Sistema de Tracking Logistico</p>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin@logistics.com"
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="********"
+              required
+            />
+          </div>
+          {error && <div className="alert alert-error">{error}</div>}
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+            {loading ? 'Ingresando...' : 'Iniciar Sesion'}
+          </button>
+        </form>
+        <div className="login-footer">
+          <p>                         </p>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
         </div>
       </div>
     </div>

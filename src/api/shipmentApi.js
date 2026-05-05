@@ -19,3 +19,4 @@ export const searchShipments = ({ senderName, recipientName, page = 1, pageSize 
   params.append('pageSize', pageSize);
   return httpClient.get(`${BASE}/api/shipments/search?${params.toString()}`);
 };
+

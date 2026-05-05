@@ -1,9 +1,15 @@
 import { useState } from 'react';
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import { createShipment, getShipmentByTracking, searchShipments } from '../api/shipmentApi';
 
 export default function ShipmentsPage() {
   const navigate = useNavigate();
+=======
+import { createShipment, getShipmentByTracking } from '../api/shipmentApi';
+
+export default function ShipmentsPage() {
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
   const [form, setForm] = useState({
     senderName: '', senderAddress: '', senderCity: '',
     recipientName: '', recipientAddress: '', recipientCity: '',
@@ -17,6 +23,7 @@ export default function ShipmentsPage() {
   const [searchResult, setSearchResult] = useState(null);
   const [searchError, setSearchError] = useState('');
 
+<<<<<<< HEAD
 
   const [filterSender, setFilterSender] = useState('');
 const [filterRecipient, setFilterRecipient] = useState('');
@@ -67,6 +74,8 @@ const handleFilterSearch = async (e, newPage = 1) => {
 };
 
 
+=======
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -96,6 +105,7 @@ const handleFilterSearch = async (e, newPage = 1) => {
       const res = await getShipmentByTracking(searchId);
       setSearchResult(res.data);
     } catch (err) {
+<<<<<<< HEAD
       setSearchError(err.response?.status === 404 ? 'Envío no encontrado' : 'Error en la búsqueda');
     }
   };
@@ -108,55 +118,103 @@ const handleFilterSearch = async (e, newPage = 1) => {
         <p className="page-header__eyebrow">Envíos</p>
         <h1>Gestión de envíos</h1>
         <p>Cree envíos con datos completos del remitente y destinatario, o consulte por tracking ID.</p>
+=======
+      setSearchError(err.response?.status === 404 ? 'Envio no encontrado' : 'Error en la busqueda');
+    }
+  };
+
+  return (
+    <div className="page">
+      <div className="page-header">
+        <h1>Gestion de Envios</h1>
+        <p>Crear nuevos envios y consultar por tracking ID</p>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
       </div>
 
       <div className="two-columns">
         <div className="card">
+<<<<<<< HEAD
           <div className="card-header"><h3>Nuevo envío</h3></div>
+=======
+          <div className="card-header"><h3>Crear Envio</h3></div>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
           <div className="card-body">
             <form onSubmit={handleCreate}>
               <div className="form-row">
                 <div className="form-group">
+<<<<<<< HEAD
                   <label>Nombre remitente</label>
                   <input name="senderName" value={form.senderName} onChange={handleChange} required />
                 </div>
                 <div className="form-group">
                   <label>Nombre destinatario</label>
+=======
+                  <label>Nombre Remitente</label>
+                  <input name="senderName" value={form.senderName} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label>Nombre Destinatario</label>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
                   <input name="recipientName" value={form.recipientName} onChange={handleChange} required />
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
+<<<<<<< HEAD
                   <label>Dirección remitente</label>
                   <input name="senderAddress" value={form.senderAddress} onChange={handleChange} required />
                 </div>
                 <div className="form-group">
                   <label>Ciudad remitente</label>
+=======
+                  <label>Direccion Remitente</label>
+                  <input name="senderAddress" value={form.senderAddress} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label>Ciudad Remitente</label>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
                   <input name="senderCity" value={form.senderCity} onChange={handleChange} required />
                 </div>
               </div>
               <div className="form-row">
                 <div className="form-group">
+<<<<<<< HEAD
                   <label>Dirección destinatario</label>
                   <input name="recipientAddress" value={form.recipientAddress} onChange={handleChange} required />
                 </div>
                 <div className="form-group">
                   <label>Ciudad destinatario</label>
+=======
+                  <label>Direccion Destinatario</label>
+                  <input name="recipientAddress" value={form.recipientAddress} onChange={handleChange} required />
+                </div>
+                <div className="form-group">
+                  <label>Ciudad Destinatario</label>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
                   <input name="recipientCity" value={form.recipientCity} onChange={handleChange} required />
                 </div>
               </div>
               <div className="form-group">
+<<<<<<< HEAD
                 <label>Peso (kg)</label>
+=======
+                <label>Peso (Kg)</label>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
                 <input name="weightKg" type="number" step="0.1" min="0.1" value={form.weightKg} onChange={handleChange} required />
               </div>
               {error && <div className="alert alert-error">{error}</div>}
               <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+<<<<<<< HEAD
                 {loading ? 'Creando…' : 'Crear envío'}
+=======
+                {loading ? 'Creando...' : 'Crear Envio'}
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
               </button>
             </form>
 
             {result && (
               <div className="alert alert-success">
+<<<<<<< HEAD
                 <strong>Envío creado</strong>
                 <p>Tracking ID: <code className="tracking-id">{result.trackingId}</code></p>
                 <p>Estado: {result.status}</p>
@@ -177,12 +235,19 @@ const handleFilterSearch = async (e, newPage = 1) => {
                     Ver tracking (PQ-)
                   </button>
                 </div>
+=======
+                <strong>Envio creado</strong>
+                <p>Tracking ID: <code className="tracking-id">{result.trackingId}</code></p>
+                <p>Estado: {result.status}</p>
+                <p>ID: <small>{result.id}</small></p>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
               </div>
             )}
           </div>
         </div>
 
         <div className="card">
+<<<<<<< HEAD
           <div className="card-header"><h3>Buscar envío</h3></div>
           <div className="card-body">
             <form onSubmit={handleSearch}>
@@ -190,6 +255,14 @@ const handleFilterSearch = async (e, newPage = 1) => {
                 <label htmlFor="search-tracking">Tracking ID</label>
                 <input
                   id="search-tracking"
+=======
+          <div className="card-header"><h3>Buscar Envio</h3></div>
+          <div className="card-body">
+            <form onSubmit={handleSearch}>
+              <div className="form-group">
+                <label>Tracking ID</label>
+                <input
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
                   value={searchId}
                   onChange={(e) => setSearchId(e.target.value)}
                   placeholder="PQ-20260414-XXXXXX"
@@ -203,6 +276,7 @@ const handleFilterSearch = async (e, newPage = 1) => {
 
             {searchResult && (
               <div className="shipment-detail">
+<<<<<<< HEAD
                 <h4>Detalle del envío</h4>
                 <table className="detail-table">
                   <tbody>
@@ -223,11 +297,25 @@ const handleFilterSearch = async (e, newPage = 1) => {
                     Abrir en tracking
                   </button>
                 </div>
+=======
+                <h4>Detalle del Envio</h4>
+                <table className="detail-table">
+                  <tbody>
+                    <tr><td>Tracking ID</td><td><code>{searchResult.trackingId}</code></td></tr>
+                    <tr><td>Estado</td><td><span className={`status status-${searchResult.status?.toLowerCase()}`}>{searchResult.status}</span></td></tr>
+                    <tr><td>Remitente</td><td>{searchResult.senderName}</td></tr>
+                    <tr><td>Destinatario</td><td>{searchResult.recipientName}</td></tr>
+                    <tr><td>Peso</td><td>{searchResult.weightKg} Kg</td></tr>
+                    <tr><td>Creado</td><td>{searchResult.createdAt}</td></tr>
+                  </tbody>
+                </table>
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
               </div>
             )}
           </div>
         </div>
       </div>
+<<<<<<< HEAD
       <div className="card" style={{ marginTop: '1.5rem' }}>
       <div className="card-header"><h3>Buscar por remitente o destinatario</h3></div>
       <div className="card-body">
@@ -311,6 +399,8 @@ const handleFilterSearch = async (e, newPage = 1) => {
         )}
       </div>
     </div>
+=======
+>>>>>>> ecf40e9156bd359678e40ebe478c482862a63c49
     </div>
   );
 }
