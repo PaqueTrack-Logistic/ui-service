@@ -202,7 +202,15 @@ export default function TrackingPage() {
                 </span>
               </div>
               <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-                <table className="detail-table" style={{ width: '100%', marginTop: 0 }}>
+                <table className="detail-table detail-table--fixed" style={{ width: '100%', marginTop: 0}}>
+                  <colgroup>
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '20%' }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>#</th>

@@ -827,6 +827,18 @@ body {
   border-collapse: collapse;
 }
 
+.detail-table--fixed {
+  table-layout: fixed;
+}
+
+.detail-table th {
+  text-align: left;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 .detail-table td {
   padding: 0.55rem 0;
   border-bottom: 1px solid #f1f5f9;
