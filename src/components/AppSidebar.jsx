@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 
 const nav = [
   { to: '/', label: 'Inicio', icon: 'M4 6h16M4 12h16M4 18h7' },

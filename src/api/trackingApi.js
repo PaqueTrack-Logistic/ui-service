@@ -1,6 +1,6 @@
 import httpClient from './httpClient';
 
-const BASE = import.meta.env.VITE_API_GATEWAY_URL || import.meta.env.VITE_TRACKING_URL;
+const BASE = import.meta.env.VITE_API_GATEWAY_URL;
 
 export const registerEvent = (shipmentId, data) =>
   httpClient.post(`${BASE}/api/tracking/${shipmentId}/events`, data);

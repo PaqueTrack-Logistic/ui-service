@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-
-const AuthContext = createContext(null);
+import { useState } from 'react';
+import { AuthContext } from './AuthContextStore';
 
 function parseJwt(token) {
   try {
@@ -12,36 +11,30 @@ function parseJwt(token) {
   }
 }
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+function buildUserFromToken(token) {
+  if (!token) return null;
+  const payload = parseJwt(token);
+  if (!payload || payload.exp * 1000 <= Date.now()) {
+    sessionStorage.clear();
+    return null;
+  }
+  return {
+    id: payload.sub,
+    email: payload.email,
+    roles: payload.roles || [],
+  };
+}
 
-  useEffect(() => {
-    const token = sessionStorage.getItem('accessToken');
-    if (token) {
-      const payload = parseJwt(token);
-      if (payload && payload.exp * 1000 > Date.now()) {
-        setUser({
-          id: payload.sub,
-          email: payload.email,
-          roles: payload.roles || [],
-        });
-      } else {
-        sessionStorage.clear();
-      }
-    }
-    setLoading(false);
-  }, []);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() =>
+    buildUserFromToken(sessionStorage.getItem('accessToken'))
+  );
+  const [loading] = useState(false);
 
   const loginUser = (accessToken, refreshToken) => {
     sessionStorage.setItem('accessToken', accessToken);
     sessionStorage.setItem('refreshToken', refreshToken);
-    const payload = parseJwt(accessToken);
-    setUser({
-      id: payload.sub,
-      email: payload.email,
-      roles: payload.roles || [],
-    });
+    setUser(buildUserFromToken(accessToken));
   };
 
   const logout = () => {
@@ -59,5 +52,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthContext);
