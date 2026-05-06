@@ -876,12 +876,20 @@ body {
   background: #f59e0b;
 }
 
+.status-at_transit_point {
+  background: #9e0389;
+}
+
 .status-out_for_delivery {
   background: #ea580c;
 }
 
 .status-delivered {
   background: #10b981;
+}
+
+.status-exception {
+  background: #eb0606;
 }
 
 .tracking-status-banner {
