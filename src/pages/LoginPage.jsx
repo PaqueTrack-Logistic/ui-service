@@ -23,7 +23,7 @@ export default function LoginPage() {
     } catch (err) {
       const msg = err.response?.data?.message
         || err.response?.data?.error
-        || 'Error de autenticacion';
+        || 'Usuario o contraseña inválidos';
       setError(msg);
     } finally {
       setLoading(false);
