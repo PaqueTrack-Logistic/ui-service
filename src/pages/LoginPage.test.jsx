@@ -31,8 +31,15 @@ describe('LoginPage (prueba funcional del formulario de login)', () => {
     sessionStorage.clear()
   })
 
-  it('login exitoso: llama al API, guarda tokens y navega a /', async () => {
-    login.mockResolvedValue({ data: { accessToken: 'at-1', refreshToken: 'rt-1' } })
+  it('login exitoso: llama al API, guarda el token y navega a /', async () => {
+    // JWT VÁLIDO: AuthContext.loginUser parsea el token; si no fuese parseable
+    // limpiaría sessionStorage. Con un JWT real se conserva (flujo de producción).
+    const enc = (o) => btoa(JSON.stringify(o))
+    const token = `${enc({ alg: 'HS256' })}.${enc({
+      sub: 'u1', email: 'admin@logistics.com', roles: ['ROLE_ADMIN'],
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    })}.firma`
+    login.mockResolvedValue({ data: { accessToken: token, refreshToken: 'rt-1' } })
     const user = userEvent.setup()
     renderLogin()
 
@@ -41,6 +48,8 @@ describe('LoginPage (prueba funcional del formulario de login)', () => {
 
     expect(login).toHaveBeenCalledWith('admin@logistics.com', 'password')
     expect(mockNavigate).toHaveBeenCalledWith('/')
+    expect(sessionStorage.getItem('accessToken')).toBe(token)
+    expect(sessionStorage.getItem('refreshToken')).toBe('rt-1')
   })
 
   it('credenciales inválidas: muestra el mensaje de error y no navega', async () => {
