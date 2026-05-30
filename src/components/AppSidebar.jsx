@@ -53,14 +53,24 @@ export default function AppSidebar({ id, className = 'app-sidebar', onNavigate }
           </NavLink>
         ))}
         {isAdmin && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) => `app-sidebar__link ${isActive ? 'app-sidebar__link--active' : ''}`}
-            onClick={handleNav}
-          >
-            <IconPath d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            Admin
-          </NavLink>
+          <>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) => `app-sidebar__link ${isActive ? 'app-sidebar__link--active' : ''}`}
+              onClick={handleNav}
+            >
+              <IconPath d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              Admin
+            </NavLink>
+            <NavLink
+              to="/admin/users"
+              className={({ isActive }) => `app-sidebar__link ${isActive ? 'app-sidebar__link--active' : ''}`}
+              onClick={handleNav}
+            >
+              <IconPath d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8m8 0v6m0-6a4 4 0 10-8 0 4 4 0 008 0" />
+              Usuarios
+            </NavLink>
+          </>
         )}
       </nav>
 

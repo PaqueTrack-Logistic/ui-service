@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { getAdminStats } from '../api/authApi';
 import { useAuth } from '../context/useAuth';
-import { Navigate } from 'react-router-dom';
 
 export default function AdminPage() {
   const { isAdmin } = useAuth();
@@ -31,6 +31,14 @@ export default function AdminPage() {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div className="card-header"><h3>Gestión de usuarios</h3></div>
+        <div className="card-body">
+          <p>Revisa y aprueba solicitudes de registro de nuevos operadores.</p>
+          <Link to="/admin/users" className="btn btn-primary">Solicitudes pendientes</Link>
+        </div>
+      </div>
 
       {statEntries && statEntries.length > 0 ? (
         <div className="card">

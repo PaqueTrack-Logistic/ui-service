@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { login } from '../api/authApi';
 
@@ -21,10 +21,17 @@ export default function LoginPage() {
       loginUser(data.accessToken, data.refreshToken);
       navigate('/');
     } catch (err) {
+      const code = err.response?.data?.errorCode;
       const msg = err.response?.data?.message
         || err.response?.data?.error
         || 'Usuario o contraseña inválidos';
-      setError(msg);
+      if (code === 'AUTH_PENDING_APPROVAL') {
+        setError('Tu cuenta está pendiente de aprobación por un administrador.');
+      } else if (code === 'AUTH_REGISTRATION_REJECTED') {
+        setError('Tu solicitud de registro fue rechazada.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -92,7 +99,9 @@ export default function LoginPage() {
             </button>
           </form>
           <div className="login-card__footer">
-            <p>Uso interno · JWT access + refresh según política del auth service</p>
+            <p>
+              ¿No tienes cuenta? <Link to="/register">Solicitar registro</Link>
+            </p>
           </div>
         </div>
       </div>
