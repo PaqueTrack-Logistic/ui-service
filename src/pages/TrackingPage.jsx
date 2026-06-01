@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { getHistory, registerEvent } from '../api/trackingApi';
+import { getHistory, registerEvent, getTransitTime, getDelayedShipments } from '../api/trackingApi';
 
 const PAGE_SIZE = 20;
 
@@ -58,6 +58,18 @@ export default function TrackingPage() {
   const [eventSuccess, setEventSuccess] = useState('');
   const [eventError, setEventError]     = useState('');
 
+  // ── Tiempo de tránsito ─────────────────────────────────────
+  const [transitId, setTransitId]         = useState('');
+  const [transitData, setTransitData]     = useState(null);
+  const [loadingTransit, setLoadingTransit] = useState(false);
+  const [transitError, setTransitError]   = useState('');
+
+  // ── Envíos retrasados ─────────────────────────────────────
+  const [thresholdHours, setThresholdHours] = useState(48);
+  const [delayedList, setDelayedList]       = useState([]);
+  const [loadingDelayed, setLoadingDelayed] = useState(false);
+  const [delayedError, setDelayedError]     = useState('');
+
   const selectedEvent = EVENT_TYPES.find((e) => e.name === eventForm.eventType);
 
   // ── Fetch historial ────────────────────────────────────────
@@ -86,19 +98,13 @@ export default function TrackingPage() {
     }
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     if (!historyId) return;
-
     let isCanceled = false;
     Promise.resolve().then(() => {
-      if (!isCanceled) {
-        fetchHistory(historyId, 0);
-      }
+      if (!isCanceled) fetchHistory(historyId, 0);
     });
-
-    return () => {
-      isCanceled = true;
-    };
+    return () => { isCanceled = true; };
   }, [historyId, fetchHistory]);
 
   const handleHistorySearch = (e) => {
@@ -138,6 +144,40 @@ export default function TrackingPage() {
       );
     } finally {
       setLoadingEvent(false);
+    }
+  };
+
+  // ── Tiempo de tránsito ─────────────────────────────────────
+  const fetchTransitTime = async (id) => {
+    if (!id.trim()) return;
+    setLoadingTransit(true);
+    setTransitError('');
+    setTransitData(null);
+    try {
+      const res = await getTransitTime(id.trim());
+      setTransitData(res.data);
+    } catch (err) {
+      setTransitError(
+        err.response?.status === 404
+          ? 'Envío no encontrado.'
+          : err.response?.data?.error || 'Error al calcular el tiempo de tránsito.'
+      );
+    } finally {
+      setLoadingTransit(false);
+    }
+  };
+
+  // ── Envíos retrasados ──────────────────────────────────────
+  const fetchDelayed = async () => {
+    setLoadingDelayed(true);
+    setDelayedError('');
+    try {
+      const res = await getDelayedShipments(thresholdHours);
+      setDelayedList(res.data || []);
+    } catch (err) {
+      setDelayedError(err.response?.data?.error || 'Error al obtener envíos retrasados.');
+    } finally {
+      setLoadingDelayed(false);
     }
   };
 
@@ -364,6 +404,105 @@ export default function TrackingPage() {
         </div>
       </div>
 
+      {/* ── Card 3: Tiempo de tránsito ── */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card-header"><h3>Tiempo de tránsito</h3></div>
+        <div className="card-body">
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 2 }}>
+              <label htmlFor="transit-id">ID de envío (UUID)</label>
+              <input
+                id="transit-id"
+                value={transitId}
+                onChange={(e) => setTransitId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button
+                onClick={() => fetchTransitTime(transitId)}
+                className="btn btn-secondary"
+                disabled={loadingTransit || !transitId.trim()}
+              >
+                {loadingTransit ? 'Consultando…' : 'Calcular'}
+              </button>
+            </div>
+          </div>
+
+          {transitError && <div className="alert alert-error" style={{ marginTop: '1rem' }}>{transitError}</div>}
+
+          {transitData && (
+            <div style={{ marginTop: '1rem', background: 'var(--muted, #f9f9fb)', padding: '1rem', borderRadius: '8px' }}>
+              <div><strong>Tracking ID:</strong> {transitData.trackingId}</div>
+              <div><strong>Estado actual:</strong> <span className={`status status-${transitData.status.toLowerCase()}`}>{transitData.status}</span></div>
+              <div><strong>Creado:</strong> {formatDate(transitData.createdAt)}</div>
+              <div><strong>Entregado:</strong> {transitData.deliveredAt ? formatDate(transitData.deliveredAt) : '—'}</div>
+              <div><strong>Tiempo en tránsito:</strong> {transitData.transitTimeHours !== null ? `${transitData.transitTimeHours} horas` : 'No entregado aún'}</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Card 4: Envíos retrasados ── */}
+      <div className="card" style={{ marginTop: '1.5rem' }}>
+        <div className="card-header"><h3>Envíos retrasados</h3></div>
+        <div className="card-body">
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 1 }}>
+              <label htmlFor="threshold">Horas umbral de retraso</label>
+              <input
+                id="threshold"
+                type="number"
+                min="1"
+                value={thresholdHours}
+                onChange={(e) => setThresholdHours(Number(e.target.value))}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button
+                onClick={fetchDelayed}
+                className="btn btn-secondary"
+                disabled={loadingDelayed}
+              >
+                {loadingDelayed ? 'Buscando…' : 'Buscar retrasados'}
+              </button>
+            </div>
+          </div>
+
+          {delayedError && <div className="alert alert-error" style={{ marginTop: '1rem' }}>{delayedError}</div>}
+
+          {delayedList.length > 0 && (
+            <div style={{ overflowX: 'auto', marginTop: '1rem' }}>
+              <table className="detail-table detail-table--fixed" style={{ width: '100%' }}>
+                <thead>
+                  <tr>
+                    <th>Tracking ID</th>
+                    <th>Estado</th>
+                    <th>Último evento</th>
+                    <th>Horas en estado actual</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {delayedList.map((d) => (
+                    <tr key={d.shipmentId}>
+                      <td>{d.trackingId}</td>
+                      <td><span className={`status status-${d.status.toLowerCase()}`}>{d.status}</span></td>
+                      <td>{formatDate(d.lastEventTime)}</td>
+                      <td>{d.hoursInCurrentStatus}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!loadingDelayed && delayedList.length === 0 && !delayedError && (
+            <p style={{ marginTop: '1rem', color: 'var(--muted-foreground, #888)' }}>
+              No hay envíos retrasados para el umbral especificado.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
