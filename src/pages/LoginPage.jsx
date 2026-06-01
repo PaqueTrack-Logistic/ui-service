@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/useAuth';
 import { login } from '../api/authApi';
+import { useAuth } from '../context/useAuth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@logistics.com');
@@ -19,7 +19,20 @@ export default function LoginPage() {
       const res = await login(email, password);
       const data = res.data.content || res.data;
       loginUser(data.accessToken, data.refreshToken);
-      navigate('/');
+      // Decodificar token para revisar roles y redirigir según rol
+      try {
+        const base64Url = (data.accessToken || '').split('.')[1] || '';
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const payload = JSON.parse(atob(base64));
+        const roles = payload?.roles || [];
+        if (roles.includes('ROLE_ADMIN') || roles.includes('ROLE_LOGISTICS')) {
+          navigate('/shipments/report');
+        } else {
+          navigate('/');
+        }
+      } catch {
+        navigate('/');
+      }
     } catch (err) {
       const code = err.response?.data?.errorCode;
       const msg = err.response?.data?.message

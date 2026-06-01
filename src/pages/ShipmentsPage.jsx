@@ -1,316 +1,369 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createShipment, getShipmentByTracking, searchShipments } from '../api/shipmentApi';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { getHistory, registerEvent } from '../api/trackingApi';
 
-export default function ShipmentsPage() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    senderName: '', senderAddress: '', senderCity: '',
-    recipientName: '', recipientAddress: '', recipientCity: '',
-    weightKg: '',
+const PAGE_SIZE = 20;
+
+const EVENT_TYPES = [
+  { name: 'DISPATCHED',             targetStatus: 'IN_TRANSIT' },
+  { name: 'ARRIVED_AT_HUB',         targetStatus: 'AT_TRANSIT_POINT' },
+  { name: 'DEPARTED_FROM_HUB',      targetStatus: 'IN_TRANSIT' },
+  { name: 'ARRIVED_AT_TERMINAL',    targetStatus: 'AT_TRANSIT_POINT' },
+  { name: 'DEPARTED_FROM_TERMINAL', targetStatus: 'IN_TRANSIT' },
+  { name: 'OUT_FOR_DELIVERY',       targetStatus: 'OUT_FOR_DELIVERY' },
+  { name: 'DELIVERED',              targetStatus: 'DELIVERED' },
+  { name: 'DAMAGED',                targetStatus: 'EXCEPTION' },
+];
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Intl.DateTimeFormat('es-CO', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(iso));
+}
+
+function toISOLocal(value) {
+  if (!value) return null;
+  return new Date(value).toISOString();
+}
+
+function nowLocalValue() {
+  const now = new Date();
+  now.setSeconds(0, 0);
+  return now.toISOString().slice(0, 16);
+}
+
+export default function TrackingPage() {
+  const [searchParams] = useSearchParams();
+
+  // ── Historial ──────────────────────────────────────────────
+  const [historyInput, setHistoryInput]     = useState(searchParams.get('id') || '');
+  const [historyId, setHistoryId]           = useState(searchParams.get('id') || '');
+  const [history, setHistory]               = useState([]);
+  const [page, setPage]                     = useState(0);
+  const [totalPages, setTotalPages]         = useState(1);
+  const [totalElements, setTotalElements]   = useState(0);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [historyError, setHistoryError]     = useState('');
+
+  // ── Registro de evento ─────────────────────────────────────
+  const [eventId, setEventId]       = useState('');
+  const [eventForm, setEventForm]   = useState({
+    eventType:  EVENT_TYPES[0].name,
+    location:   '',
+    occurredAt: nowLocalValue(),
   });
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loadingEvent, setLoadingEvent] = useState(false);
+  const [eventSuccess, setEventSuccess] = useState('');
+  const [eventError, setEventError]     = useState('');
 
-  const [searchId, setSearchId] = useState('');
-  const [searchResult, setSearchResult] = useState(null);
-  const [searchError, setSearchError] = useState('');
+  const selectedEvent = EVENT_TYPES.find((e) => e.name === eventForm.eventType);
 
-
-  const [filterSender, setFilterSender] = useState('');
-const [filterRecipient, setFilterRecipient] = useState('');
-const [listResults, setListResults] = useState([]);
-const [listError, setListError] = useState('');
-const [listLoading, setListLoading] = useState(false);
-const [page, setPage] = useState(1);
-const [totalPages, setTotalPages] = useState(1);
-const pageSize = 10;
-
-const handleFilterSearch = async (e, newPage = 1) => {
-  if (e) e.preventDefault();
-  setListError('');
-  setListResults([]);
-
-  const hasSender = filterSender.trim().length > 0;
-  const hasRecipient = filterRecipient.trim().length > 0;
-
-  if (hasSender && hasRecipient) {
-    setListError('Ingrese solo un parámetro a la vez');
-    return;
-  }
-  if (!hasSender && !hasRecipient) {
-    setListError('Ingrese solo un parámetro a la vez');
-    return;
-  }
-
-  setListLoading(true);
-  try {
-    const res = await searchShipments({
-      senderName: hasSender ? filterSender.trim() : undefined,
-      recipientName: hasRecipient ? filterRecipient.trim() : undefined,
-      page: newPage,
-      pageSize,
-    });
-    const data = res.data;
-    // soporta tanto { items, total } como un array plano
-    const items = Array.isArray(data) ? data : (data.items || data.results || []);
-    const total = Array.isArray(data) ? items.length : (data.total ?? items.length);
-    setListResults(items);
-    setTotalPages(Math.max(1, Math.ceil(total / pageSize)));
-    setPage(newPage);
-  } catch (err) {
-    setListError(err.response?.data?.error || 'Error en la búsqueda');
-  } finally {
-    setListLoading(false);
-  }
-};
-
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setError('');
-    setResult(null);
-    setLoading(true);
+  // ── Fetch historial ────────────────────────────────────────
+  const fetchHistory = useCallback(async (id, pageNum) => {
+    if (!id?.trim()) return;
+    setLoadingHistory(true);
+    setHistoryError('');
     try {
-      const payload = { ...form, weightKg: parseFloat(form.weightKg) };
-      const res = await createShipment(payload);
-      setResult(res.data);
+      const res  = await getHistory(id.trim(), { page: pageNum, size: PAGE_SIZE });
+      const data = res.data;
+      setHistory(data.content || []);
+      setTotalPages(data.totalPages ?? 1);
+      setTotalElements(data.totalElements ?? 0);
+      setPage(pageNum);
     } catch (err) {
-      const d = err.response?.data;
-      setError(d?.error || d?.message || d?.details?.join(', ') || 'Error al crear envio');
+      setHistoryError(
+        err.response?.status === 404
+          ? 'No se encontró un envío con ese ID.'
+          : err.response?.data?.error || 'Error al obtener el historial.'
+      );
+      setHistory([]);
+      setTotalPages(1);
+      setTotalElements(0);
     } finally {
-      setLoading(false);
+      setLoadingHistory(false);
     }
-  };
+  }, []);
 
-  const handleSearch = async (e) => {
+    useEffect(() => {
+    if (!historyId) return;
+
+    let isCanceled = false;
+    Promise.resolve().then(() => {
+      if (!isCanceled) {
+        fetchHistory(historyId, 0);
+      }
+    });
+
+    return () => {
+      isCanceled = true;
+    };
+  }, [historyId, fetchHistory]);
+
+  const handleHistorySearch = (e) => {
     e.preventDefault();
-    setSearchError('');
-    setSearchResult(null);
-    try {
-      const res = await getShipmentByTracking(searchId);
-      setSearchResult(res.data);
-    } catch (err) {
-      setSearchError(err.response?.status === 404 ? 'Envío no encontrado' : 'Error en la búsqueda');
-    }
+    const id = historyInput.trim();
+    setHistoryId(id);
+    setPage(0);
+    setHistory([]);
+    setHistoryError('');
+    fetchHistory(id, 0);
   };
 
-  
+  // ── Registro evento ────────────────────────────────────────
+  const handleEventChange = (e) => {
+    setEventForm({ ...eventForm, [e.target.name]: e.target.value });
+  };
+
+  const handleRegisterEvent = async (e) => {
+    e.preventDefault();
+    if (!eventId.trim()) return;
+    setLoadingEvent(true);
+    setEventError('');
+    setEventSuccess('');
+    try {
+      await registerEvent(eventId.trim(), {
+        eventType:  eventForm.eventType,
+        location:   eventForm.location.trim(),
+        occurredAt: toISOLocal(eventForm.occurredAt),
+      });
+      setEventSuccess(`Evento "${eventForm.eventType}" registrado correctamente.`);
+      setEventForm({ eventType: EVENT_TYPES[0].name, location: '', occurredAt: nowLocalValue() });
+    } catch (err) {
+      setEventError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        'Error al registrar el evento.'
+      );
+    } finally {
+      setLoadingEvent(false);
+    }
+  };
 
   return (
     <div className="page">
       <div className="page-header">
-        <p className="page-header__eyebrow">Envíos</p>
-        <h1>Gestión de envíos</h1>
-        <p>Cree envíos con datos completos del remitente y destinatario, o consulte por tracking ID.</p>
+        <p className="page-header__eyebrow">Tracking</p>
+        <h1>Seguimiento de envíos</h1>
+        <p>Consulte el historial de eventos de un envío o registre uno nuevo.</p>
       </div>
 
-      <div className="two-columns">
-        <div className="card">
-          <div className="card-header"><h3>Nuevo envío</h3></div>
-          <div className="card-body">
-            <form onSubmit={handleCreate}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Nombre remitente</label>
-                  <input name="senderName" value={form.senderName} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Nombre destinatario</label>
-                  <input name="recipientName" value={form.recipientName} onChange={handleChange} required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Dirección remitente</label>
-                  <input name="senderAddress" value={form.senderAddress} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Ciudad remitente</label>
-                  <input name="senderCity" value={form.senderCity} onChange={handleChange} required />
-                </div>
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Dirección destinatario</label>
-                  <input name="recipientAddress" value={form.recipientAddress} onChange={handleChange} required />
-                </div>
-                <div className="form-group">
-                  <label>Ciudad destinatario</label>
-                  <input name="recipientCity" value={form.recipientCity} onChange={handleChange} required />
-                </div>
-              </div>
-              <div className="form-group">
-                <label>Peso (kg)</label>
-                <input name="weightKg" type="number" step="0.1" min="0.1" value={form.weightKg} onChange={handleChange} required />
-              </div>
-              {error && <div className="alert alert-error">{error}</div>}
-              <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                {loading ? 'Creando…' : 'Crear envío'}
-              </button>
-            </form>
-
-            {result && (
-              <div className="alert alert-success">
-                <strong>Envío creado</strong>
-                <p>Tracking ID: <code className="tracking-id">{result.trackingId}</code></p>
-                <p>Estado: {result.status}</p>
-                <p>ID interno: <small className="code-chip">{result.id}</small></p>
-                <div className="shipment-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => navigate(`/tracking?id=${encodeURIComponent(result.id)}`)}
-                  >
-                    Ver tracking (UUID)
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => navigate(`/tracking?id=${encodeURIComponent(result.trackingId)}`)}
-                  >
-                    Ver tracking (PQ-)
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header"><h3>Buscar envío</h3></div>
-          <div className="card-body">
-            <form onSubmit={handleSearch}>
-              <div className="form-group">
-                <label htmlFor="search-tracking">Tracking ID</label>
+      {/* ── Card 1: Historial ── */}
+      <div className="card">
+        <div className="card-header"><h3>Historial de eventos</h3></div>
+        <div className="card-body">
+          <form onSubmit={handleHistorySearch}>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label htmlFor="history-input">ID de envío (UUID interno)</label>
                 <input
-                  id="search-tracking"
-                  value={searchId}
-                  onChange={(e) => setSearchId(e.target.value)}
-                  placeholder="PQ-20260414-XXXXXX"
+                  id="history-input"
+                  value={historyInput}
+                  onChange={(e) => setHistoryInput(e.target.value)}
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                   required
                 />
               </div>
-              <button type="submit" className="btn btn-secondary btn-full">Buscar</button>
-            </form>
+              <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={loadingHistory}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  {loadingHistory ? 'Buscando…' : 'Ver historial'}
+                </button>
+              </div>
+            </div>
+          </form>
 
-            {searchError && <div className="alert alert-error">{searchError}</div>}
+          {historyError && (
+            <div className="alert alert-error" style={{ marginTop: '1rem' }}>
+              {historyError}
+            </div>
+          )}
 
-            {searchResult && (
-              <div className="shipment-detail">
-                <h4>Detalle del envío</h4>
-                <table className="detail-table">
+          {loadingHistory && (
+            <p style={{ marginTop: '1rem', color: 'var(--muted-foreground, #888)' }}>Cargando…</p>
+          )}
+
+          {!historyError && !loadingHistory && historyId && history.length === 0 && (
+            <p style={{ marginTop: '1rem', color: 'var(--muted-foreground, #888)' }}>
+              Sin eventos registrados aún.
+            </p>
+          )}
+
+          {history.length > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--muted-foreground, #888)' }}>
+                  {totalElements} evento{totalElements !== 1 ? 's' : ''} en total
+                </span>
+              </div>
+              <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
+                <table className="detail-table detail-table--fixed" style={{ width: '100%', marginTop: 0}}>
+                  <colgroup>
+                    <col style={{ width: '6%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '18%' }} />
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '20%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Tipo de evento</th>
+                      <th>Antes</th>
+                      <th>Después</th>
+                      <th>Ubicación</th>
+                      <th>Fecha / Hora</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    <tr><td>Tracking ID</td><td><code className="code-chip">{searchResult.trackingId}</code></td></tr>
-                    <tr><td>Estado</td><td><span className={`status status-${searchResult.status?.toLowerCase()}`}>{searchResult.status}</span></td></tr>
-                    <tr><td>Remitente</td><td>{searchResult.senderName}</td></tr>
-                    <tr><td>Destinatario</td><td>{searchResult.recipientName}</td></tr>
-                    <tr><td>Peso</td><td>{searchResult.weightKg} kg</td></tr>
-                    <tr><td>Creado</td><td>{searchResult.createdAt}</td></tr>
+                    {history.map((ev, idx) => (
+                      <tr key={ev.id}>
+                        <td style={{ color: 'var(--muted-foreground, #888)', fontSize: '0.8rem' }}>
+                          {page * PAGE_SIZE + idx + 1}
+                        </td>
+                        <td><strong>{ev.eventType || '—'}</strong></td>
+                        <td>
+                          {ev.statusBefore
+                            ? <span className={`status status-${ev.statusBefore.toLowerCase()}`}>{ev.statusBefore}</span>
+                            : <span style={{ color: 'var(--muted-foreground,#888)' }}>—</span>}
+                        </td>
+                        <td>
+                          {ev.statusAfter
+                            ? <span className={`status status-${ev.statusAfter.toLowerCase()}`}>{ev.statusAfter}</span>
+                            : <span style={{ color: 'var(--muted-foreground,#888)' }}>—</span>}
+                        </td>
+                        <td>{ev.location || '—'}</td>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                          {formatDate(ev.occurredAt)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
-                <div className="shipment-actions">
+              </div>
+
+              {totalPages > 1 && (
+                <div
+                  className="shipment-actions"
+                  style={{ justifyContent: 'space-between', marginTop: '1rem' }}
+                >
                   <button
                     type="button"
-                    className="btn btn-primary btn-sm"
-                    onClick={() => navigate(`/tracking?id=${encodeURIComponent(searchResult.id)}`)}
+                    className="btn btn-secondary btn-sm"
+                    disabled={page <= 0 || loadingHistory}
+                    onClick={() => fetchHistory(historyId, page - 1)}
                   >
-                    Abrir en tracking
+                    ← Anterior
+                  </button>
+                  <span style={{ fontSize: '0.9rem' }}>Página {page + 1} de {totalPages}</span>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={page >= totalPages - 1 || loadingHistory}
+                    onClick={() => fetchHistory(historyId, page + 1)}
+                  >
+                    Siguiente →
                   </button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </>
+          )}
         </div>
       </div>
+
+      {/* ── Card 2: Registrar evento ── */}
       <div className="card" style={{ marginTop: '1.5rem' }}>
-      <div className="card-header"><h3>Buscar por remitente o destinatario</h3></div>
-      <div className="card-body">
-        <form onSubmit={(e) => handleFilterSearch(e, 1)}>
-          <div className="form-row">
+        <div className="card-header"><h3>Registrar evento</h3></div>
+        <div className="card-body">
+          <form onSubmit={handleRegisterEvent}>
             <div className="form-group">
-              <label>Remitente (búsqueda parcial)</label>
+              <label htmlFor="event-shipment-id">ID de envío (UUID interno)</label>
               <input
-                value={filterSender}
-                onChange={(e) => setFilterSender(e.target.value)}
-                placeholder="Ej: Juan"
+                id="event-shipment-id"
+                value={eventId}
+                onChange={(e) => setEventId(e.target.value)}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                required
               />
             </div>
-            <div className="form-group">
-              <label>Destinatario (búsqueda parcial)</label>
-              <input
-                value={filterRecipient}
-                onChange={(e) => setFilterRecipient(e.target.value)}
-                placeholder="Ej: María"
-              />
+
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Tipo de evento</label>
+                <select
+                  name="eventType"
+                  value={eventForm.eventType}
+                  onChange={handleEventChange}
+                  required
+                >
+                  {EVENT_TYPES.map((et) => (
+                    <option key={et.name} value={et.name}>{et.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedEvent && (
+                <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.1rem' }}>
+                  <div style={{
+                    background: 'var(--muted, #f4f4f5)',
+                    borderRadius: '6px',
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.85rem',
+                    color: 'var(--muted-foreground, #666)',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    Estado resultante:{' '}
+                    <span className={`status status-${selectedEvent.targetStatus.toLowerCase()}`}>
+                      {selectedEvent.targetStatus}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-          <button type="submit" className="btn btn-primary btn-full" disabled={listLoading}>
-            {listLoading ? 'Buscando…' : 'Buscar'}
-          </button>
-        </form>
 
-        {listError && <div className="alert alert-error" style={{ marginTop: '1rem' }}>{listError}</div>}
-
-        {listResults.length > 0 && (
-          <>
-            <table className="detail-table" style={{ marginTop: '1rem' }}>
-              <thead>
-                <tr>
-                  <th>Tracking ID</th>
-                  <th>Remitente</th>
-                  <th>Destinatario</th>
-                  <th>Estado</th>
-                  <th>Peso</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {listResults.map((s) => (
-                  <tr key={s.id}>
-                    <td><code className="code-chip">{s.trackingId}</code></td>
-                    <td>{s.senderName}</td>
-                    <td>{s.recipientName}</td>
-                    <td><span className={`status status-${s.status?.toLowerCase()}`}>{s.status}</span></td>
-                    <td>{s.weightKg} kg</td>
-                    
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            <div className="shipment-actions" style={{ justifyContent: 'space-between', marginTop: '1rem' }}>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={page <= 1 || listLoading}
-                onClick={() => handleFilterSearch(null, page - 1)}
-              >
-                ← Anterior
-              </button>
-              <span>Página {page} de {totalPages}</span>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={page >= totalPages || listLoading}
-                onClick={() => handleFilterSearch(null, page + 1)}
-              >
-                Siguiente →
-              </button>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Ubicación</label>
+                <input
+                  name="location"
+                  value={eventForm.location}
+                  onChange={handleEventChange}
+                  placeholder="Ej: Bodega Medellín Norte"
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Fecha y hora del evento</label>
+                <input
+                  type="datetime-local"
+                  name="occurredAt"
+                  value={eventForm.occurredAt}
+                  onChange={handleEventChange}
+                  required
+                />
+              </div>
             </div>
-          </>
-        )}
 
-        {!listLoading && !listError && listResults.length === 0 && (filterSender || filterRecipient) && (
-          <p style={{ marginTop: '1rem', color: 'var(--muted-foreground, #888)' }}>Sin resultados.</p>
-        )}
+            {eventError   && <div className="alert alert-error">{eventError}</div>}
+            {eventSuccess && <div className="alert alert-success">{eventSuccess}</div>}
+
+            <button
+              type="submit"
+              className="btn btn-primary btn-full"
+              disabled={loadingEvent}
+            >
+              {loadingEvent ? 'Registrando…' : 'Registrar evento'}
+            </button>
+          </form>
+        </div>
       </div>
-    </div>
+
     </div>
   );
 }

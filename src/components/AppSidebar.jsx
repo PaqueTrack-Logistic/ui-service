@@ -18,6 +18,7 @@ function IconPath({ d }) {
 export default function AppSidebar({ id, className = 'app-sidebar', onNavigate }) {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const isLogistics = user?.roles?.some(r => r === 'ROLE_LOGISTICS' || r === 'LOGISTICS');
 
   const handleNav = () => {
     onNavigate?.();
@@ -71,6 +72,16 @@ export default function AppSidebar({ id, className = 'app-sidebar', onNavigate }
               Usuarios
             </NavLink>
           </>
+        )}
+        {(isAdmin || isLogistics) && (
+          <NavLink
+            to="/shipments/report"
+            className={({ isActive }) => `app-sidebar__link ${isActive ? 'app-sidebar__link--active' : ''}`}
+            onClick={handleNav}
+          >
+            <IconPath d="M3 3h18v4H3z M3 10h18v11H3z" />
+            Reporte de envíos
+          </NavLink>
         )}
       </nav>
 

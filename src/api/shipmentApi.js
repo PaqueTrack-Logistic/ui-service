@@ -20,3 +20,10 @@ export const searchShipments = ({ senderName, recipientName, page = 1, pageSize 
   return httpClient.get(`${BASE}/api/shipments/search?${params.toString()}`);
 };
 
+export const getShipmentsReport = ({ from, to }) => {
+  const params = new URLSearchParams();
+  if (from) params.append('from', from);
+  if (to) params.append('to', to);
+  return httpClient.get(`${BASE}/api/shipments/report?${params.toString()}`);
+};
+
