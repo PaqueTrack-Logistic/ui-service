@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { getShipmentsReport } from '../api/shipmentApi';
 
+const normalizeReportDate = (value) => {
+  if (!value) return '';
+  const isoPattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (isoPattern.test(value)) return value;
+  const localPattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const match = value.match(localPattern);
+  if (match) {
+    return `${match[3]}-${match[2]}-${match[1]}`;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+};
+
 export default function LogisticsReportPage() {
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -15,7 +28,9 @@ export default function LogisticsReportPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await getShipmentsReport({ from, to });
+      const normalizedFrom = normalizeReportDate(from);
+      const normalizedTo = normalizeReportDate(to);
+      const res = await getShipmentsReport({ from: normalizedFrom, to: normalizedTo });
       const data = res.data?.content ?? res.data;
       // Expecting an array; store as-is for flexible rendering
       setItems(Array.isArray(data) ? data : []);
