@@ -13,3 +13,13 @@ export const getHistory = (shipmentId, { page = 0, size = 20 } = {}) => {
 
 export const getCurrentStatus = (shipmentId) =>
   httpClient.get(`${BASE}/api/tracking/${shipmentId}/current`);
+
+
+export const getTransitTime = (shipmentId) =>
+  httpClient.get(`${BASE}/api/tracking/${shipmentId}/transit-time`);
+
+
+export const getDelayedShipments = (thresholdHours = 48) =>
+  httpClient.get(`${BASE}/api/tracking/delayed`, {
+    params: { thresholdHours },
+  });
