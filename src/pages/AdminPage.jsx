@@ -17,10 +17,7 @@ export default function AdminPage() {
 
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  const statEntries =
-    stats && typeof stats === 'object' && !Array.isArray(stats)
-      ? Object.entries(stats)
-      : null;
+  const rows = Array.isArray(stats?.rows) ? stats.rows : [];
 
   return (
     <div className="page">
@@ -40,25 +37,22 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {statEntries && statEntries.length > 0 ? (
+      {stats != null ? (
         <div className="card">
           <div className="card-header"><h3>Usuarios por rol</h3></div>
           <div className="card-body">
-            <div className="stats-grid">
-              {statEntries.map(([key, val]) => (
-                <div key={key} className="stat-card">
-                  <div className="stat-card__key">{key.replace(/^ROLE_/, '')}</div>
-                  <div className="stat-card__val">{String(val)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : stats != null ? (
-        <div className="card">
-          <div className="card-header"><h3>Respuesta</h3></div>
-          <div className="card-body">
-            <pre className="json-display">{JSON.stringify(stats, null, 2)}</pre>
+            {rows.length > 0 ? (
+              <div className="stats-grid">
+                {rows.map(({ roleName, userCount }) => (
+                  <div key={roleName} className="stat-card">
+                    <div className="stat-card__key">{roleName.replace(/^ROLE_/, '')}</div>
+                    <div className="stat-card__val">{userCount}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted">No hay usuarios registrados por rol.</p>
+            )}
           </div>
         </div>
       ) : (
