@@ -12,6 +12,14 @@ const normalizeReportDate = (value) => {
   return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
 };
 
+const STATUS_CONFIG = {
+  created:       { label: 'Creados',        className: 'badge-created'  },
+  inTransit:     { label: 'En tránsito',    className: 'badge-transit'  },
+  outForDelivery:{ label: 'En reparto',     className: 'badge-delivery' },
+  delivered:     { label: 'Entregados',     className: 'badge-delivered'},
+  exception:     { label: 'Con excepción',  className: 'badge-exception'},
+};
+
 export default function LogisticsReportPage() {
   const today   = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -20,7 +28,7 @@ export default function LogisticsReportPage() {
   const [to, setTo]           = useState(today);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
-  const [report, setReport]   = useState(null);  // ← objeto completo
+  const [report, setReport]   = useState(null);
 
   const handleSearch = async (e) => {
     e && e.preventDefault();
@@ -31,7 +39,7 @@ export default function LogisticsReportPage() {
       const normalizedTo   = normalizeReportDate(to);
       const res  = await getShipmentsReport({ from: normalizedFrom, to: normalizedTo });
       const data = res.data?.content ?? res.data;
-      setReport(data);   // ← guarda el objeto completo
+      setReport(data);
     } catch (err) {
       setError(err.response?.data?.message || 'Error al obtener el reporte');
     } finally {
@@ -40,87 +48,125 @@ export default function LogisticsReportPage() {
   };
 
   return (
-    <div>
-      <h2>Reporte de envíos por rango de fechas</h2>
+    <div className="page">
 
-      <form className="report-form" onSubmit={handleSearch}>
-        <label>
-          Desde
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} required />
-        </label>
-        <label>
-          Hasta
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} required />
-        </label>
-        <button type="submit" className="btn" disabled={loading}>
-          {loading ? 'Cargando…' : 'Consultar'}
-        </button>
-      </form>
+      {/* ─── Encabezado ─────────────────────────────────────────── */}
+      <div className="page-header">
+        <p className="page-header__eyebrow">Reportes</p>
+        <h1>Reporte de envíos</h1>
+        <p>Consulte el volumen de envíos creados, en tránsito y entregados en un rango de fechas.</p>
+      </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {/* ─── Formulario ─────────────────────────────────────────── */}
+      <div className="card">
+        <div className="card-header">
+          <h3>Rango de fechas</h3>
+        </div>
+        <form className="report-form" onSubmit={handleSearch}>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Desde</label>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label>Hasta</label>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} required />
+            </div>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Cargando…' : 'Consultar'}
+            </button>
+          </div>
+        </form>
+        {error && <div className="alert alert-error" style={{ marginTop: '1rem' }}>{error}</div>}
+      </div>
 
+      {/* ─── Resultados ─────────────────────────────────────────── */}
       {report && (
-        <section className="report-results">
-
-          {/* ─── Resumen de conteos ─────────────────────────────── */}
-          <div className="report-summary">
-            <h3>Resumen del {report.from} al {report.to}</h3>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Estado</th>
-                  <th>Cantidad</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>Creados</td>          <td>{report.totalCreated}</td></tr>
-                <tr><td>En tránsito</td>       <td>{report.totalInTransit}</td></tr>
-                <tr><td>En reparto</td>        <td>{report.totalOutForDelivery}</td></tr>
-                <tr><td>Entregados</td>        <td>{report.totalDelivered}</td></tr>
-                <tr><td>Con excepción</td>     <td>{report.totalException}</td></tr>
-                <tr style={{fontWeight: 'bold'}}><td>Total general</td><td>{report.totalGeneral}</td></tr>
-              </tbody>
-            </table>
+        <>
+          {/* Métricas */}
+          <div className="card" style={{ marginTop: '1rem' }}>
+            <div className="card-header">
+              <h3>Resumen — {report.from} al {report.to}</h3>
+            </div>
+            <div className="metrics-grid">
+              <MetricCard label="Creados"        value={report.totalCreated}        color="blue"   />
+              <MetricCard label="En tránsito"    value={report.totalInTransit}      color="amber"  />
+              <MetricCard label="En reparto"     value={report.totalOutForDelivery} color="purple" />
+              <MetricCard label="Entregados"     value={report.totalDelivered}      color="green"  />
+              <MetricCard label="Con excepción"  value={report.totalException}      color="red"    />
+              <MetricCard label="Total general"  value={report.totalGeneral}        total />
+            </div>
           </div>
 
-          {/* ─── Detalle por estado ──────────────────────────────── */}
-          {renderShipmentTable('Creados', report.created)}
-          {renderShipmentTable('En tránsito', report.inTransit)}
-          {renderShipmentTable('En reparto', report.outForDelivery)}
-          {renderShipmentTable('Entregados', report.delivered)}
-          {renderShipmentTable('Con excepción', report.exception)}
-
-        </section>
-      )}
-
-      {report && report.totalGeneral === 0 && (
-        <p>No hay resultados para el rango seleccionado.</p>
+          {/* Detalle por estado */}
+          {report.totalGeneral === 0 ? (
+            <div className="card" style={{ marginTop: '1rem', textAlign: 'center', padding: '2rem', color: 'var(--color-text-tertiary)' }}>
+              No hay envíos en el rango seleccionado.
+            </div>
+          ) : (
+            <div className="card" style={{ marginTop: '1rem' }}>
+              <div className="card-header">
+                <h3>Detalle por estado</h3>
+              </div>
+              {Object.entries(STATUS_CONFIG).map(([key, config]) =>
+                report[key]?.length > 0 && (
+                  <ShipmentTable
+                    key={key}
+                    title={config.label}
+                    badgeClass={config.className}
+                    shipments={report[key]}
+                  />
+                )
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 }
 
-function renderShipmentTable(title, shipments) {
-  if (!shipments || shipments.length === 0) return null;
+function MetricCard({ label, value, color, total }) {
+  const colorMap = {
+    blue:   'var(--color-text-info)',
+    amber:  '#854F0B',
+    purple: '#534AB7',
+    green:  'var(--color-text-success)',
+    red:    'var(--color-text-danger)',
+  };
   return (
-    <div style={{ marginTop: '1.5rem' }}>
-      <h4>{title} ({shipments.length})</h4>
-      <table className="table">
+    <div className={`metric-card${total ? ' metric-card--total' : ''}`}>
+      <div className="metric-card__label">{label}</div>
+      <div className="metric-card__value" style={{ color: color ? colorMap[color] : undefined }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ShipmentTable({ title, badgeClass, shipments }) {
+  return (
+    <div style={{ marginBottom: '1.5rem' }}>
+      <div className="section-title">
+        <span className={`status-badge ${badgeClass}`}>{title}</span>
+        <span className="count-pill">{shipments.length} envíos</span>
+      </div>
+      <table className="detail-table">
         <thead>
           <tr>
             <th>Número de guía</th>
             <th>Remitente</th>
             <th>Destinatario</th>
-            <th>Ciudad origen</th>
-            <th>Ciudad destino</th>
+            <th>Origen</th>
+            <th>Destino</th>
             <th>Peso (kg)</th>
-            <th>Fecha creación</th>
+            <th>Fecha</th>
           </tr>
         </thead>
         <tbody>
           {shipments.map((s) => (
             <tr key={s.id}>
-              <td>{s.trackingId}</td>
+              <td><code className="code-chip">{s.trackingId}</code></td>
               <td>{s.senderName}</td>
               <td>{s.recipientName}</td>
               <td>{s.senderCity}</td>
