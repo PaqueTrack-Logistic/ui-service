@@ -24,3 +24,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Reportes de cobertura de pruebas
+coverage
